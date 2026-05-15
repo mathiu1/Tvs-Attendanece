@@ -35,12 +35,24 @@ exports.markAttendance = async (req, res) => {
         const todayDate = new Date();
         todayDate.setHours(0, 0, 0, 0);
 
+        const yesterday = new Date(todayDate);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const tenDaysAgo = new Date(todayDate);
+        tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+
         if (attendanceDate > todayDate) {
           errors.push({ workerId, error: 'Cannot mark attendance for future dates' }); continue;
         }
 
-        if (req.user.role === 'supervisor' && attendanceDate.getTime() !== todayDate.getTime()) {
-          errors.push({ workerId, error: "Supervisors can only update today's attendance" }); continue;
+        if (req.user.role === 'supervisor') {
+          if (attendanceDate.getTime() < yesterday.getTime()) {
+            errors.push({ workerId, error: "Supervisors can only update today's and yesterday's attendance" }); continue;
+          }
+        } else if (req.user.role === 'hr') {
+          if (attendanceDate.getTime() < tenDaysAgo.getTime()) {
+            errors.push({ workerId, error: "HR can only update attendance for the last 10 days" }); continue;
+          }
         }
 
         // Check for existing entry
@@ -146,7 +158,8 @@ exports.getReport = async (req, res) => {
       .populate('markedBy', 'name')
       .populate('otMarkedBy', 'name')
       .populate('department', 'name code')
-      .sort({ date: -1, 'worker.name': 1 });
+      .sort({ date: -1, 'worker.name': 1 })
+      .lean();
 
     res.json({ success: true, count: attendance.length, attendance });
   } catch (error) {
@@ -253,6 +266,8 @@ exports.getStats = async (req, res) => {
   try {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
+    // Ensure we use the same normalized date for alert comparisons
+    const todayStartTime = today.getTime();
 
     let deptFilter = {};
     let deptQuery = { isActive: true };
@@ -262,40 +277,59 @@ exports.getStats = async (req, res) => {
       deptQuery._id = deptId;
     }
 
-    const totalWorkers = await User.countDocuments({ role: 'worker', isActive: true, ...deptFilter });
-    const todayAttendance = await Attendance.countDocuments({ date: today, ...deptFilter });
-    const todayPresent = await Attendance.countDocuments({
-      date: today,
-      status: { $in: ['1st_shift', '2nd_shift', 'general', 'OT'] },
-      ...deptFilter,
-    });
-    const todayAbsent = await Attendance.countDocuments({ date: today, status: 'AA', ...deptFilter });
-    const todayCOff = await Attendance.countDocuments({ date: today, status: 'C-off', ...deptFilter });
-    const totalDepartments = await require('../models/Department').countDocuments({ isActive: true });
-
-    const absentList = await Attendance.find({ date: today, status: 'AA', ...deptFilter })
-      .populate('worker', 'name phone')
-      .populate('department', 'name')
-      .sort({ 'worker.name': 1 });
-
-    const allDepartments = await require('../models/Department').find(deptQuery).lean();
-    
-    const workersByDept = await User.aggregate([
-      { $match: { role: 'worker', isActive: true, ...deptFilter } },
-      { $group: { _id: '$department', total: { $sum: 1 } } }
-    ]);
-
-    const deptStatsAgg = await Attendance.aggregate([
-      { $match: { date: today, ...deptFilter } },
-      {
-        $group: {
-          _id: '$department',
-          present: { $sum: { $cond: [{ $in: ['$status', ['1st_shift', '2nd_shift', 'general', 'OT']] }, 1, 0] } },
-          absent: { $sum: { $cond: [{ $eq: ['$status', 'AA'] }, 1, 0] } },
-          cOff: { $sum: { $cond: [{ $eq: ['$status', 'C-off'] }, 1, 0] } },
+    const [
+      totalWorkers, 
+      todayCounts, 
+      totalDepartments, 
+      absentList,
+      allDepartments,
+      workersByDept,
+      deptStatsAgg
+    ] = await Promise.all([
+      User.countDocuments({ role: 'worker', isActive: true, ...deptFilter }),
+      Attendance.aggregate([
+        { $match: { date: today, ...deptFilter } },
+        {
+          $group: {
+            _id: null,
+            total: { $sum: 1 },
+            present: { $sum: { $cond: [{ $in: ['$status', ['1st_shift', '2nd_shift', 'general', 'OT']] }, 1, 0] } },
+            absent: { $sum: { $cond: [{ $eq: ['$status', 'AA'] }, 1, 0] } },
+            cOff: { $sum: { $cond: [{ $eq: ['$status', 'C-off'] }, 1, 0] } },
+          }
         }
-      }
+      ]),
+      require('../models/Department').countDocuments({ isActive: true }),
+      Attendance.find({ date: today, status: 'AA', ...deptFilter })
+        .populate('worker', 'name phone')
+        .populate('department', 'name')
+        .sort({ 'worker.name': 1 })
+        .lean(),
+      require('../models/Department').find(deptQuery).lean(),
+      User.aggregate([
+        { $match: { role: 'worker', isActive: true, ...deptFilter } },
+        { $group: { _id: '$department', total: { $sum: 1 } } }
+      ]),
+      Attendance.aggregate([
+        { $match: { date: today, ...deptFilter } },
+        {
+          $group: {
+            _id: '$department',
+            present: { $sum: { $cond: [{ $in: ['$status', ['1st_shift', '2nd_shift', 'general', 'OT']] }, 1, 0] } },
+            absent: { $sum: { $cond: [{ $eq: ['$status', 'AA'] }, 1, 0] } },
+            cOff: { $sum: { $cond: [{ $eq: ['$status', 'C-off'] }, 1, 0] } },
+          }
+        }
+      ])
     ]);
+
+    const activeWorkersCount = totalWorkers;
+    const statsResult = todayCounts[0] || { total: 0, present: 0, absent: 0, cOff: 0 };
+    
+    const todayAttendance = statsResult.total;
+    const todayPresent = statsResult.present;
+    const todayAbsent = statsResult.absent;
+    const todayCOff = statsResult.cOff;
 
     const finalDeptChartData = allDepartments.map(dept => {
       const deptIdStr = dept._id.toString();
@@ -321,13 +355,24 @@ exports.getStats = async (req, res) => {
 
     // 1. Pending Alerts
     const pendingAlerts = [];
-    const yesterday = new Date(today);
-    yesterday.setDate(today.getDate() - 1);
+    const yesterday = new Date(todayStartTime);
+    yesterday.setDate(yesterday.getDate() - 1);
     
-    const yesterdayAttendance = await Attendance.countDocuments({ date: yesterday, ...deptFilter });
-    const yesterdayUnmarked = totalWorkers - yesterdayAttendance;
+    // Total active workers for yesterday (assuming workers weren't deactivated just today)
+    // For simplicity, we use totalWorkers which is active workers today.
+    
+    const yesterdayAttendanceCount = await Attendance.countDocuments({ 
+      date: yesterday, 
+      ...deptFilter 
+    });
+    
+    const yesterdayUnmarked = activeWorkersCount - yesterdayAttendanceCount;
     if (yesterdayUnmarked > 0) {
-      pendingAlerts.push({ id: 'a1', type: 'warning', message: `${yesterdayUnmarked} worker(s) have unmarked attendance for yesterday.` });
+      pendingAlerts.push({ 
+        id: 'a1', 
+        type: 'warning', 
+        message: `${yesterdayUnmarked} worker(s) still have unmarked attendance for yesterday (${yesterday.toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}).` 
+      });
     }
 
     const completelyUnmarkedDepts = finalDeptChartData.filter(d => d.total > 0 && d.unmarked === d.total).map(d => d.name);

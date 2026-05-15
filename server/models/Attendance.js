@@ -63,6 +63,11 @@ const attendanceSchema = new mongoose.Schema(
 // Compound unique index to prevent double entries for same worker on same date
 attendanceSchema.index({ worker: 1, date: 1 }, { unique: true });
 
+// Speed up dashboard and report queries
+attendanceSchema.index({ date: 1, department: 1 });
+attendanceSchema.index({ status: 1 });
+attendanceSchema.index({ department: 1 });
+
 // Pre-save: normalize date to start of day (strip time)
 attendanceSchema.pre('save', function (next) {
   if (this.date) {

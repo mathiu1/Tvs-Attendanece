@@ -28,7 +28,8 @@ exports.getUsers = async (req, res) => {
 
     const users = await User.find(filter)
       .populate('department', 'name code')
-      .sort({ createdAt: -1 });
+      .sort({ createdAt: -1 })
+      .lean();
 
     res.json({
       success: true,
@@ -49,10 +50,9 @@ exports.getUsers = async (req, res) => {
 // @access  HR
 exports.getUser = async (req, res) => {
   try {
-    const user = await User.findById(req.params.id).populate(
-      'department',
-      'name code'
-    );
+    const user = await User.findById(req.params.id)
+      .populate('department', 'name code')
+      .lean();
 
     if (!user) {
       return res.status(404).json({

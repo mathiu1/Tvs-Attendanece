@@ -74,6 +74,12 @@ const userSchema = new mongoose.Schema(
   }
 );
 
+// Indexes for faster lookups and filtering
+userSchema.index({ department: 1 });
+userSchema.index({ role: 1 });
+userSchema.index({ isActive: 1 });
+userSchema.index({ name: 'text', employeeId: 'text' }); // For search performance
+
 // Hash password before saving
 userSchema.pre('save', async function (next) {
   if (!this.isModified('password')) return next();

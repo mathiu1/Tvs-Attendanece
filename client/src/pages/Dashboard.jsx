@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router-dom';
 import API from '../api/axios';
-import { HiOutlineUsers, HiOutlineClipboardCheck, HiOutlineOfficeBuilding, HiOutlineExclamationCircle, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSearch, HiOutlineBell } from 'react-icons/hi';
+import { HiOutlineUsers, HiOutlineClipboardCheck, HiOutlineOfficeBuilding, HiOutlineExclamationCircle, HiOutlineCheckCircle, HiOutlineClock, HiOutlineSearch, HiOutlineBell, HiOutlinePhone } from 'react-icons/hi';
 import { PieChart, Pie, Cell, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, Legend, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const Dashboard = () => {
@@ -114,19 +114,24 @@ const Dashboard = () => {
       {stats.pendingAlerts && stats.pendingAlerts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {stats.pendingAlerts.map(alert => (
-            <div key={alert.id} className={`alert-card alert-${alert.type}`}>
+            <Link 
+              key={alert.id} 
+              to={alert.id === 'a1' ? '/attendance/report' : '/attendance/mark'} 
+              className={`alert-card alert-${alert.type}`}
+              style={{ textDecoration: 'none', display: 'flex', transition: 'var(--transition)' }}
+            >
               <HiOutlineBell style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }} />
               <div>
                 <strong style={{ display: 'block', marginBottom: 2 }}>Action Required</strong>
                 <span>{alert.message}</span>
               </div>
-            </div>
+            </Link>
           ))}
         </div>
       )}
 
       {/* Snapshot cards above charts */}
-      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 16, marginBottom: 20 }}>
+      <div className="dash-snapshot-grid">
         <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
           <div style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🏆</div>
           <div>
@@ -143,19 +148,19 @@ const Dashboard = () => {
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px', marginTop: '20px' }}>
+      <div className="dash-charts-grid">
         
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          <div className="glass-card" style={{ height: 320 }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 15 }}>
+          <div className="glass-card dash-chart-card">
+            <div className="dash-chart-header">
               <h3 style={{ margin: 0, fontSize: 16 }}>Overall Attendance</h3>
-              <div style={{ fontSize: 13, background: 'var(--bg-primary)', padding: '5px 10px', borderRadius: 6, border: '1px solid var(--border)' }}>
-                <span style={{ marginRight: 10 }}>Total: <strong>{stats.totalWorkers}</strong></span>
-                <span style={{ marginRight: 10, color: '#00E396' }}>Present: <strong>{stats.todayPresent}</strong></span>
-                <span style={{ marginRight: 10, color: '#FF4560' }}>Absent: <strong>{stats.todayAbsent}</strong></span>
-                <span style={{ marginRight: 10, color: '#FEB019' }}>C-Off: <strong>{stats.todayCOff || 0}</strong></span>
-                <span style={{ color: '#737F94' }}>Unmarked: <strong>{stats.unmarked}</strong></span>
+              <div className="dash-chart-stats">
+                <span>Total: <strong>{stats.totalWorkers}</strong></span>
+                <span style={{ color: '#00E396' }}>P: <strong>{stats.todayPresent}</strong></span>
+                <span style={{ color: '#FF4560' }}>A: <strong>{stats.todayAbsent}</strong></span>
+                <span style={{ color: '#FEB019' }}>CO: <strong>{stats.todayCOff || 0}</strong></span>
+                <span style={{ color: '#737F94' }}>UM: <strong>{stats.unmarked}</strong></span>
               </div>
             </div>
             <ResponsiveContainer width="100%" height="80%">
@@ -202,8 +207,8 @@ const Dashboard = () => {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           
           <div className="glass-card">
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', borderBottom: '1px solid var(--border)', paddingBottom: 10, marginBottom: 15 }}>
-              <h3 style={{ margin: 0, fontSize: 18 }}>Today's Absent List</h3>
+            <div className="dash-absent-header">
+              <h3 style={{ margin: 0, fontSize: 16 }}>Today's Absent List</h3>
               <div style={{ display: 'flex', gap: 5 }}>
                 <button 
                   onClick={() => setAbsentFilter('without_inform')} 
@@ -241,16 +246,24 @@ const Dashboard = () => {
                       <tr>
                         <th style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>Name</th>
                         <th style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>Dept</th>
+                        <th style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>Mobile</th>
                         <th style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', color: 'var(--text-secondary)' }}>Type</th>
                       </tr>
                     </thead>
                     <tbody>
                       {filteredList.map((record) => (
                         <tr key={record._id}>
-                          <td style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)' }}>{record.worker?.name}</td>
-                          <td style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)' }}>{record.department?.name}</td>
+                          <td style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', fontWeight: 500 }}>{record.worker?.name}</td>
+                          <td style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', fontSize: 12 }}>{record.department?.name}</td>
+                          <td style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)', fontSize: 12 }}>
+                            {record.worker?.phone ? (
+                              <a href={`tel:${record.worker.phone}`} style={{ color: 'var(--primary)', textDecoration: 'none', display: 'flex', alignItems: 'center', gap: 4 }}>
+                                <HiOutlinePhone size={12} /> {record.worker.phone}
+                              </a>
+                            ) : '—'}
+                          </td>
                           <td style={{ padding: '10px 5px', borderBottom: '1px solid var(--border)' }}>
-                            <span style={{ fontSize: 11, padding: '2px 6px', borderRadius: 4, background: record.absentType === 'informed' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: record.absentType === 'informed' ? '#93c5fd' : '#fca5a5' }}>
+                            <span style={{ fontSize: 10, padding: '2px 6px', borderRadius: 4, background: record.absentType === 'informed' ? 'rgba(59, 130, 246, 0.1)' : 'rgba(239, 68, 68, 0.1)', color: record.absentType === 'informed' ? '#93c5fd' : '#fca5a5' }}>
                               {record.absentType === 'informed' ? 'Informed' : 'W/O Inform'}
                             </span>
                           </td>
@@ -321,10 +334,10 @@ const Dashboard = () => {
 
   return (
     <>
-      <div className="page-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+      <div className="page-header dash-page-header">
         <div>
-          <h1 className="text-gradient">Welcome, {user?.name?.split(' ')[0]} 👋</h1>
-          <p>{isHR() ? 'HR Admin Dashboard' : isSupervisor() ? `Supervisor — ${user?.department?.name || ''}` : 'Your Attendance Overview'}</p>
+          <h1 className="welcome-text">Welcome, {user?.name?.split(' ')[0]} 👋</h1>
+          <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>{isHR() ? 'HR Admin Dashboard' : isSupervisor() ? `Supervisor — ${user?.department?.name || ''}` : 'Your Attendance Overview'}</p>
         </div>
         
         {/* QUICK LOOKUP */}
@@ -368,7 +381,7 @@ const Dashboard = () => {
         {isHR() && stats && (
           <>
             {renderDashboardCards()}
-            <div className="stats-grid" style={{ gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', marginTop: 20 }}>
+            <div className="stats-grid dash-action-grid">
               <Link to="/users" className="action-banner">
                 <div className="action-banner-content">
                   <div className="action-banner-icon" style={{ background: 'var(--success-bg)', color: 'var(--success)' }}><HiOutlineUsers /></div>

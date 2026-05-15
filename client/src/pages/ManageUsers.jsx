@@ -241,7 +241,7 @@ const ManageUsers = () => {
         {/* View User Modal */}
         {viewUser && (
           <div className="modal-overlay" onClick={() => setViewUser(null)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500, padding: 0, overflow: 'hidden' }}>
+          <div className="modal user-view-modal" onClick={(e) => e.stopPropagation()}>
               <button className="modal-close" onClick={() => setViewUser(null)} style={{ position: 'absolute', top: 15, right: 15, zIndex: 10, background: 'var(--bg-secondary)', borderRadius: '50%', padding: 5 }}><HiOutlineX /></button>
               
               <div className="modal-body" style={{ padding: 0 }}>
@@ -271,7 +271,7 @@ const ManageUsers = () => {
                 </div>
 
                 {/* Details Grid */}
-                <div style={{ padding: '20px', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '20px' }}>
+                <div className="user-details-grid">
                   
                   <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
                     <div style={{ background: 'var(--bg-secondary)', padding: 10, borderRadius: 8, color: 'var(--primary)' }}>

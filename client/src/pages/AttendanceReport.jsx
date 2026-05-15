@@ -1,9 +1,10 @@
 import { useState, useEffect, useMemo } from 'react';
 import API from '../api/axios';
-import { HiOutlineDocumentReport } from 'react-icons/hi';
+import { HiOutlineDocumentReport, HiOutlineDownload } from 'react-icons/hi';
 import CustomSelect from '../components/CustomSelect';
 import toast, { Toaster } from 'react-hot-toast';
 import { useAuth } from '../context/AuthContext';
+import { exportAttendancePDF } from '../utils/exportPDF';
 
 const STATUS_SHORT = {
   '1st_shift': '1st',
@@ -51,29 +52,36 @@ const AttendanceReport = () => {
   const [editRemarks, setEditRemarks] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
 
+  const [holidayConfirmDate, setHolidayConfirmDate] = useState(null);
+
   const isReadOnly = useMemo(() => {
     if (!selectedCell) return false;
     if (isWorker()) return true;
+
+    const cellDateStr = selectedCell.date; // format is YYYY-MM-DD
+    if (!cellDateStr) return true; // Safety
+
+    const [y, m, d] = cellDateStr.split('-').map(Number);
+    const cellDate = new Date(y, m - 1, d);
+    cellDate.setHours(0,0,0,0);
+    
+    const today = new Date();
+    today.setHours(0,0,0,0);
     
     if (isSupervisor()) {
-      const cellDateStr = selectedCell.date; // format is YYYY-MM-DD
-      const [y, m, d] = cellDateStr.split('-').map(Number);
-      const cellDate = new Date(y, m - 1, d);
-      
-      const today = new Date();
-      today.setHours(0,0,0,0);
-      
       const yesterday = new Date(today);
       yesterday.setDate(yesterday.getDate() - 1);
-      
-      if (cellDate.getTime() === today.getTime() || cellDate.getTime() === yesterday.getTime()) {
-        return false;
-      }
-      return true;
+      return !(cellDate.getTime() === today.getTime() || cellDate.getTime() === yesterday.getTime());
+    }
+
+    if (isHR()) {
+      const tenDaysAgo = new Date(today);
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+      return cellDate.getTime() < tenDaysAgo.getTime();
     }
     
     return false;
-  }, [selectedCell, isWorker, isSupervisor]);
+  }, [selectedCell, isWorker, isSupervisor, isHR]);
 
   useEffect(() => {
     fetchDepartments();
@@ -151,6 +159,29 @@ const AttendanceReport = () => {
       now.getMonth() === dateObj.getMonth() &&
       now.getDate() === dateObj.getDate()
     );
+  };
+
+  const isDateEditable = (dateObj) => {
+    const now = new Date();
+    now.setHours(0, 0, 0, 0);
+    const checkDate = new Date(dateObj);
+    checkDate.setHours(0, 0, 0, 0);
+
+    if (checkDate > now) return false;
+
+    if (isSupervisor()) {
+      const yesterday = new Date(now);
+      yesterday.setDate(yesterday.getDate() - 1);
+      return checkDate >= yesterday;
+    }
+
+    if (isHR()) {
+      const tenDaysAgo = new Date(now);
+      tenDaysAgo.setDate(tenDaysAgo.getDate() - 10);
+      return checkDate >= tenDaysAgo;
+    }
+
+    return false; // Workers or others
   };
 
   const isFutureDate = (dateObj) => {
@@ -234,13 +265,43 @@ const AttendanceReport = () => {
   const endDateObj = new Date(year, month - 1, 20);
   const reportPeriodTitle = `${startDateObj.toLocaleDateString('en-IN', { month: 'long' })} 21 to ${endDateObj.toLocaleDateString('en-IN', { month: 'long' })} 20, ${endDateObj.getFullYear()}`;
 
+  const handleExportPDF = () => {
+    if (filteredData.length === 0) {
+      toast.error('No data to export');
+      return;
+    }
+    try {
+      const deptName = selectedDept
+        ? departments.find(d => d._id === selectedDept)?.name || 'Selected'
+        : 'All Departments';
+      exportAttendancePDF({
+        workers: filteredData,
+        dates,
+        reportPeriodTitle,
+        departmentName: deptName,
+      });
+      toast.success('PDF downloaded successfully!');
+    } catch (err) {
+      console.error(err);
+      toast.error('Failed to generate PDF');
+    }
+  };
+
   const handleCellClick = (entry, dateObj, worker) => {
-    if (isFutureDate(dateObj)) {
-      toast.error('Cannot select future dates');
+    if (!isDateEditable(dateObj)) {
+      if (isFutureDate(dateObj)) {
+        toast.error('Cannot select future dates');
+      } else {
+        toast.error(isSupervisor() ? 'Supervisors can only update today and yesterday' : 'HR can only update attendance for the last 10 days');
+      }
       return;
     }
     if (entry) {
-      setSelectedCell({ ...entry, displayDate: dateObj.toLocaleDateString('en-IN') });
+      setSelectedCell({ 
+        ...entry, 
+        date: formatYMD(dateObj),
+        displayDate: dateObj.toLocaleDateString('en-IN') 
+      });
       setEditStatus(entry.status);
       setEditOtHours(entry.otHours || '');
       setEditRemarks(entry.remarks || '');
@@ -255,6 +316,48 @@ const AttendanceReport = () => {
       setEditStatus('');
       setEditOtHours('');
       setEditRemarks('');
+    }
+  };
+
+  const handleHeaderClick = (dateObj) => {
+    if (!isDateEditable(dateObj)) {
+      toast.error(isSupervisor() ? 'Supervisors can only update today and yesterday' : 'HR can only update attendance for the last 10 days');
+      return;
+    }
+    setHolidayConfirmDate(dateObj);
+  };
+
+  const markHolidayForAll = async () => {
+    if (!holidayConfirmDate) return;
+    setIsUpdating(true);
+    try {
+      const dateStr = formatYMD(holidayConfirmDate);
+      
+      // Only mark holiday for workers who DON'T have an existing record for this date
+      const workersToMark = filteredData.filter(worker => !worker.days[dateStr]);
+
+      if (workersToMark.length === 0) {
+        toast.info('All workers already have records for this date. No changes made.');
+        setHolidayConfirmDate(null);
+        return;
+      }
+
+      const recordsToMark = workersToMark.map(worker => ({
+        workerId: worker.id,
+        date: dateStr,
+        status: 'holiday',
+        otHours: 0,
+        remarks: 'Public Holiday'
+      }));
+      
+      await API.post('/attendance/mark', { records: recordsToMark });
+      toast.success(`Marked as holiday for all workers`);
+      setHolidayConfirmDate(null);
+      fetchReport();
+    } catch (err) {
+      toast.error(err.response?.data?.message || 'Failed to mark holiday');
+    } finally {
+      setIsUpdating(false);
     }
   };
 
@@ -352,6 +455,14 @@ const AttendanceReport = () => {
               <span className="report-search-count">{filteredData.length} found</span>
             )}
           </div>
+          <button
+            className="btn btn-primary pdf-export-btn"
+            onClick={handleExportPDF}
+            disabled={filteredData.length === 0 || loading}
+            title="Export as PDF"
+          >
+            <HiOutlineDownload /> Export PDF
+          </button>
           <div className="report-legend">
             {Object.entries(STATUS_LABELS).map(([key, label]) => (
               <div key={key} className="legend-item" title={label}>
@@ -397,6 +508,12 @@ const AttendanceReport = () => {
                           <th
                             key={dayKey}
                             className={`report-col-day ${isSunday(dateObj) ? 'report-sunday' : ''} ${isToday(dateObj) ? 'report-today' : ''}`}
+                            onClick={() => handleHeaderClick(dateObj)}
+                            style={{ 
+                              cursor: isDateEditable(dateObj) ? 'pointer' : 'default',
+                              position: 'relative'
+                            }}
+                            title={isDateEditable(dateObj) ? 'Click to mark as Holiday for ALL' : ''}
                           >
                             <div className="day-header">
                               <span className="day-num">{dateObj.getDate()}</span>
@@ -445,7 +562,11 @@ const AttendanceReport = () => {
                               key={dayKey}
                               className={`report-col-day ${isSunday(dateObj) ? 'report-sunday' : ''} ${isToday(dateObj) ? 'report-today' : ''}`}
                               onClick={() => handleCellClick(entry, dateObj, worker)}
-                              style={{ cursor: isFutureDate(dateObj) ? 'not-allowed' : 'pointer', opacity: isFutureDate(dateObj) && !entry ? 0.3 : 1 }}
+                              style={{ 
+                                cursor: isDateEditable(dateObj) ? 'pointer' : 'not-allowed', 
+                                opacity: !isDateEditable(dateObj) && !entry ? 0.3 : 1 
+                              }}
+                              title={!isDateEditable(dateObj) ? 'View only' : 'Click to edit'}
                             >
                               {entry ? (
                                 <span
@@ -535,9 +656,12 @@ const AttendanceReport = () => {
                           <div
                             key={dayKey}
                             className={`mobile-day-cell ${isSunday(dateObj) ? 'sunday' : ''}`}
-                            title={entry ? STATUS_LABELS[entry.status] : 'No data'}
+                            title={!isDateEditable(dateObj) ? (entry ? STATUS_LABELS[entry.status] : 'No data') : 'Click to edit'}
                             onClick={() => handleCellClick(entry, dateObj, worker)}
-                            style={{ cursor: isFutureDate(dateObj) ? 'not-allowed' : 'pointer', opacity: isFutureDate(dateObj) && !entry ? 0.3 : 1 }}
+                            style={{ 
+                              cursor: isDateEditable(dateObj) ? 'pointer' : 'not-allowed', 
+                              opacity: !isDateEditable(dateObj) && !entry ? 0.3 : 1 
+                            }}
                           >
                             <span className="mobile-day-num">{dateObj.getDate()}</span>
                             {entry ? (
@@ -650,6 +774,28 @@ const AttendanceReport = () => {
                   {isUpdating ? 'Saving...' : 'Save'}
                 </button>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Holiday Confirmation Modal */}
+      {holidayConfirmDate && (
+        <div className="modal-overlay" onClick={() => setHolidayConfirmDate(null)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+            <div className="modal-header">
+              <h3>Bulk Holiday Update</h3>
+              <button className="modal-close" onClick={() => setHolidayConfirmDate(null)}>×</button>
+            </div>
+            <div className="modal-body">
+              <p>Are you sure you want to mark <strong>{holidayConfirmDate.toLocaleDateString('en-IN')}</strong> as a <strong>Holiday</strong> for workers without existing records?</p>
+              <p style={{ fontSize: 13, color: 'var(--text-secondary)', marginTop: 10 }}>This will skip any workers who already have a shift or absence marked.</p>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-outline" onClick={() => setHolidayConfirmDate(null)}>Cancel</button>
+              <button className="btn btn-primary" onClick={markHolidayForAll} disabled={isUpdating}>
+                {isUpdating ? 'Updating...' : 'Confirm Bulk Holiday'}
+              </button>
             </div>
           </div>
         </div>

@@ -22,6 +22,17 @@ const MarkAttendance = () => {
   const [workers, setWorkers] = useState([]);
   const [records, setRecords] = useState({});
   const todayDate = new Date().toISOString().split('T')[0];
+  const yesterdayDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 1);
+    return d.toISOString().split('T')[0];
+  })();
+  const tenDaysAgoDate = (() => {
+    const d = new Date();
+    d.setDate(d.getDate() - 10);
+    return d.toISOString().split('T')[0];
+  })();
+
   const [date, setDate] = useState(todayDate);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
@@ -157,7 +168,13 @@ const MarkAttendance = () => {
           )}
           <div className="filter-group">
             <label>Date</label>
-            <input type="date" value={date} max={todayDate} onChange={(e) => { setDate(e.target.value); setRecords({}); setExistingRecords([]); }} disabled={isSupervisor()} />
+            <input 
+              type="date" 
+              value={date} 
+              max={todayDate} 
+              min={isHR() ? tenDaysAgoDate : yesterdayDate}
+              onChange={(e) => { setDate(e.target.value); setRecords({}); setExistingRecords([]); }} 
+            />
           </div>
           <div className="filter-group" style={{ flex: 'none' }}>
             <label>&nbsp;</label>
