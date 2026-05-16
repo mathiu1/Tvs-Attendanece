@@ -15,6 +15,7 @@ const ManageUsers = () => {
   const [search, setSearch] = useState('');
   const [filterRole, setFilterRole] = useState('');
   const [filterDept, setFilterDept] = useState('');
+  const [filterActive, setFilterActive] = useState('true');
   const [form, setForm] = useState({ name: '', email: '', password: '', role: 'worker', department: '', employeeId: '', phone: '', designation: '', dateOfJoining: '', address: '' });
 
   useEffect(() => { fetchUsers(); fetchDepartments(); }, []);
@@ -26,6 +27,7 @@ const ManageUsers = () => {
       if (search) params.search = search;
       if (filterRole) params.role = filterRole;
       if (filterDept) params.department = filterDept;
+      if (filterActive && filterActive !== 'all') params.isActive = filterActive;
       const { data } = await API.get('/users', { params });
       setUsers(data.users);
     } catch (err) { toast.error('Failed to load users'); }
@@ -39,7 +41,7 @@ const ManageUsers = () => {
     } catch (err) { console.error(err); }
   };
 
-  useEffect(() => { fetchUsers(); }, [search, filterRole, filterDept]);
+  useEffect(() => { fetchUsers(); }, [search, filterRole, filterDept, filterActive]);
 
   const openCreate = () => {
     setEditing(null);
@@ -77,8 +79,8 @@ const ManageUsers = () => {
     } catch (err) { toast.error(err.response?.data?.message || 'Failed'); }
   };
 
-  const handleDeleteClick = (id, name) => {
-    setDeleteConfirm({ id, name });
+  const handleDeleteClick = (user) => {
+    setDeleteConfirm({ id: user._id, name: user.name, isActive: user.isActive });
   };
 
   const confirmDelete = async () => {
@@ -89,6 +91,24 @@ const ManageUsers = () => {
       setDeleteConfirm(null);
       fetchUsers();
     } catch (err) { toast.error('Failed to deactivate'); }
+  };
+
+  const handleReactivate = async () => {
+    try {
+      await API.put(`/users/${deleteConfirm.id}`, { isActive: true });
+      toast.success('User activated');
+      setDeleteConfirm(null);
+      fetchUsers();
+    } catch (err) { toast.error('Failed to activate'); }
+  };
+
+  const handlePermanentDelete = async () => {
+    try {
+      await API.delete(`/users/${deleteConfirm.id}?permanent=true`);
+      toast.success('User deleted permanently');
+      setDeleteConfirm(null);
+      fetchUsers();
+    } catch (err) { toast.error('Failed to delete permanently'); }
   };
 
   const handleView = (user) => {
@@ -135,6 +155,20 @@ const ManageUsers = () => {
               options={[{ value: '', label: 'All Departments' }, ...departments.map(d => ({ value: d._id, label: d.name }))]}
             />
           </div>
+          <div className="filter-group" style={{ flex: '0 0 150px' }}>
+            <label>Status</label>
+            <CustomSelect
+              size="small"
+              value={filterActive}
+              onChange={(e) => setFilterActive(e.target.value)}
+              placeholder="Select Status"
+              options={[
+                { value: 'all', label: 'Overall User' },
+                { value: 'true', label: 'Activate User' },
+                { value: 'false', label: 'Deactivate User' },
+              ]}
+            />
+          </div>
           <div className="filter-group" style={{ flex: 'none' }}>
             <label>&nbsp;</label>
             <button className="btn btn-primary" onClick={openCreate}><HiOutlinePlus /> Add User</button>
@@ -161,7 +195,7 @@ const ManageUsers = () => {
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleView(u)}><HiOutlineEye /></button>
                           <button className="btn btn-outline btn-sm btn-icon" onClick={() => openEdit(u)}><HiOutlinePencil /></button>
-                          <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDeleteClick(u._id, u.name)} style={{ color: 'var(--danger)' }}><HiOutlineTrash /></button>
+                          <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDeleteClick(u)} style={{ color: 'var(--danger)' }}><HiOutlineTrash /></button>
                         </div>
                       </td>
                     </tr>
@@ -341,25 +375,40 @@ const ManageUsers = () => {
           </div>
         )}
 
-        {/* Delete Confirmation Modal */}
-        {deleteConfirm && (
-          <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
-            <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
-              <div className="modal-header">
-                <h3>Confirm Deactivation</h3>
-                <button className="modal-close" onClick={() => setDeleteConfirm(null)}><HiOutlineX /></button>
-              </div>
-              <div className="modal-body">
-                <p>Are you sure you want to deactivate the user <strong>{deleteConfirm.name}</strong>?</p>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>This action can be reversed by an administrator later.</p>
-              </div>
-              <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                <button type="button" className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={confirmDelete}>Deactivate</button>
-              </div>
-            </div>
-          </div>
-        )}
+         {deleteConfirm && (
+           <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
+               <div className="modal-header">
+                 <h3>{deleteConfirm.isActive ? 'Confirm Deactivation' : 'Manage Inactive User'}</h3>
+                 <button className="modal-close" onClick={() => setDeleteConfirm(null)}><HiOutlineX /></button>
+               </div>
+               <div className="modal-body">
+                 {deleteConfirm.isActive ? (
+                   <>
+                     <p>Are you sure you want to deactivate the user <strong>{deleteConfirm.name}</strong>?</p>
+                     <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>This action can be reversed by an administrator later.</p>
+                   </>
+                 ) : (
+                   <>
+                     <p>User <strong>{deleteConfirm.name}</strong> is currently inactive.</p>
+                     <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>You can reactivate the user or delete them and all their data permanently.</p>
+                   </>
+                 )}
+               </div>
+               <div className="modal-footer">
+                 <button type="button" className="btn btn-outline" onClick={() => setDeleteConfirm(null)}>Cancel</button>
+                 {deleteConfirm.isActive ? (
+                   <button type="button" className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={confirmDelete}>Deactivate</button>
+                 ) : (
+                   <>
+                     <button type="button" className="btn btn-success" onClick={handleReactivate}>Activate</button>
+                     <button type="button" className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={handlePermanentDelete}>Delete Permanently</button>
+                   </>
+                 )}
+               </div>
+             </div>
+           </div>
+         )}
       </div>
     </>
   );

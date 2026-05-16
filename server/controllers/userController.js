@@ -1,4 +1,5 @@
 const User = require('../models/User');
+const Attendance = require('../models/Attendance');
 
 // @desc    Get all users
 // @route   GET /api/users
@@ -217,6 +218,20 @@ exports.deleteUser = async (req, res) => {
       return res.status(404).json({
         success: false,
         message: 'User not found',
+      });
+    }
+
+    const { permanent } = req.query;
+
+    if (permanent === 'true') {
+      // Permanent delete
+      await user.deleteOne();
+      // Delete attendance records
+      await Attendance.deleteMany({ worker: user._id });
+
+      return res.json({
+        success: true,
+        message: 'User and related data deleted permanently',
       });
     }
 

@@ -13,13 +13,13 @@ const STATUS_SHORT = {
 
 // Color palette for statuses (RGB arrays for jsPDF)
 const STATUS_COLORS = {
-  '1st_shift': { bg: [30, 58, 138], text: [96, 165, 250] },   // blue
-  '2nd_shift': { bg: [59, 30, 109], text: [192, 132, 252] },   // purple
-  general:     { bg: [13, 74, 68], text: [45, 212, 191] },     // teal
-  AA:          { bg: [100, 20, 20], text: [248, 113, 113] },    // red
-  'C-off':     { bg: [92, 60, 5], text: [251, 191, 36] },      // amber
-  OT:          { bg: [100, 45, 10], text: [251, 146, 60] },     // orange
-  holiday:     { bg: [8, 70, 82], text: [34, 211, 238] },       // cyan
+  '1st_shift': { bg: [219, 234, 254], text: [30, 58, 138] },
+  '2nd_shift': { bg: [243, 232, 255], text: [88, 28, 135] },
+  general: { bg: [204, 251, 241], text: [13, 74, 68] },
+  AA: { bg: [254, 226, 226], text: [153, 27, 27] },
+  'C-off': { bg: [254, 243, 199], text: [146, 64, 14] },
+  OT: { bg: [254, 215, 170], text: [154, 52, 18] },
+  holiday: { bg: [207, 250, 254], text: [21, 94, 117] },
 };
 
 /**
@@ -39,32 +39,6 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
 
   // ── Header Bar ──
   const headerH = 22;
-  doc.setFillColor(15, 23, 42); // dark navy
-  doc.rect(0, 0, pageWidth, headerH, 'F');
-  
-  // Accent line
-  doc.setFillColor(99, 102, 241); // indigo accent
-  doc.rect(0, headerH, pageWidth, 1.5, 'F');
-
-  // Company branding
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(16);
-  doc.setTextColor(255, 255, 255);
-  doc.text('TVS ATTENDANCE MANAGEMENT', 10, 9);
-  
-  doc.setFont('helvetica', 'normal');
-  doc.setFontSize(9);
-  doc.setTextColor(148, 163, 184); // slate-400
-  doc.text('Monthly Attendance Report', 10, 15);
-
-  // Report generation info (right side)
-  doc.setFontSize(8);
-  doc.setTextColor(148, 163, 184);
-  const generatedAt = new Date().toLocaleDateString('en-IN', { 
-    day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' 
-  });
-  doc.text(`Generated: ${generatedAt}`, pageWidth - 10, 9, { align: 'right' });
-  doc.text(`Page 1`, pageWidth - 10, 15, { align: 'right' });
 
   // ── Report Info Section ──
   const infoY = headerH + 5;
@@ -133,8 +107,8 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
     const isSun = dateObj.getDay() === 0;
     headers.push({
       content: `${dayNum}\n${dayName}`,
-      styles: { 
-        halign: 'center', 
+      styles: {
+        halign: 'center',
         cellWidth: 9,
         fillColor: isSun ? [100, 20, 20] : [30, 41, 59],
         textColor: isSun ? [248, 113, 113] : [148, 163, 184],
@@ -147,9 +121,9 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
   const body = workers.map((worker, idx) => {
     const row = [
       { content: String(idx + 1), styles: { halign: 'center', textColor: [100, 116, 139], fontSize: 6 } },
-      { content: worker.name, styles: { fontStyle: 'bold', textColor: [226, 232, 240], fontSize: 6.5 } },
-      { content: worker.employeeId, styles: { textColor: [148, 163, 184], fontSize: 6, font: 'courier' } },
-      { content: worker.department, styles: { textColor: [148, 163, 184], fontSize: 6 } },
+      { content: worker.name, styles: { fontStyle: 'bold', textColor: [15, 23, 42], fontSize: 6.5 } },
+      { content: worker.employeeId, styles: { textColor: [71, 85, 105], fontSize: 6, font: 'courier' } },
+      { content: worker.department, styles: { textColor: [71, 85, 105], fontSize: 6 } },
       { content: String(worker.presentCount), styles: { halign: 'center', textColor: [34, 197, 94], fontStyle: 'bold', fontSize: 6.5 } },
       { content: String(worker.absentCount), styles: { halign: 'center', textColor: [239, 68, 68], fontStyle: 'bold', fontSize: 6.5 } },
       { content: `${worker.totalOtHours}h`, styles: { halign: 'center', textColor: [251, 146, 60], fontStyle: 'bold', fontSize: 6.5 } },
@@ -201,9 +175,9 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
     startY: tableStartY,
     theme: 'plain',
     styles: {
-      fillColor: [15, 23, 42],        // slate-900 row bg
-      textColor: [148, 163, 184],      // slate-400
-      lineColor: [30, 41, 59],         // slate-800 borders
+      fillColor: [255, 255, 255],
+      textColor: [51, 65, 85],
+      lineColor: [226, 232, 240],
       lineWidth: 0.2,
       fontSize: 6,
       cellPadding: { top: 2, bottom: 2, left: 1.5, right: 1.5 },
@@ -211,16 +185,16 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
       overflow: 'hidden',
     },
     headStyles: {
-      fillColor: [30, 41, 59],          // slate-800
-      textColor: [148, 163, 184],        // slate-400
+      fillColor: [241, 245, 249],
+      textColor: [51, 65, 85],
       fontStyle: 'bold',
       fontSize: 6,
-      lineColor: [51, 65, 85],
+      lineColor: [226, 232, 240],
       lineWidth: 0.3,
       valign: 'middle',
     },
     alternateRowStyles: {
-      fillColor: [22, 30, 48],           // slightly lighter alternate
+      fillColor: [248, 250, 252],
     },
     margin: { left: 10, right: 10 },
     tableLineColor: [30, 41, 59],
@@ -232,7 +206,7 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
       doc.rect(0, pageHeight - 10, pageWidth, 10, 'F');
       doc.setFillColor(99, 102, 241);
       doc.rect(0, pageHeight - 10, pageWidth, 0.5, 'F');
-      
+
       doc.setFont('helvetica', 'normal');
       doc.setFontSize(7);
       doc.setTextColor(100, 116, 139);
@@ -242,9 +216,7 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
     },
   });
 
-  // ── Summary on new page ──
-  doc.addPage();
-  drawSummary(doc, autoTable, 15, workers, dates, pageWidth, pageHeight, reportPeriodTitle);
+
 
   // Save the PDF
   const filename = `Attendance_Report_${reportPeriodTitle.replace(/[^a-zA-Z0-9]/g, '_')}.pdf`;
@@ -253,17 +225,13 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
 
 function drawSummary(doc, autoTable, startY, workers, dates, pageWidth, pageHeight, reportPeriodTitle) {
   // ── Page header ──
-  doc.setFillColor(15, 23, 42);
+  doc.setFillColor(255, 255, 255);
   doc.rect(0, 0, pageWidth, 14, 'F');
-  doc.setFillColor(99, 102, 241);
-  doc.rect(0, 14, pageWidth, 1, 'F');
-  doc.setFont('helvetica', 'bold');
-  doc.setFontSize(11);
-  doc.setTextColor(255, 255, 255);
-  doc.text('TVS ATTENDANCE — DETAILED SUMMARY', 10, 9);
+  doc.setFillColor(79, 70, 229);
+  doc.rect(0, 14, pageWidth, 0.5, 'F');
   doc.setFont('helvetica', 'normal');
   doc.setFontSize(8);
-  doc.setTextColor(148, 163, 184);
+  doc.setTextColor(100, 116, 139);
   doc.text(reportPeriodTitle, pageWidth - 10, 9, { align: 'right' });
 
   let y = startY + 6;
@@ -292,12 +260,12 @@ function drawSummary(doc, autoTable, startY, workers, dates, pageWidth, pageHeig
   const cardW = (pageWidth - 20 - 25) / 6;
   const cardH = 22;
   const overviewCards = [
-    { label: 'Total Workers', value: String(workers.length), color: [129, 140, 248], bg: [30, 41, 80] },
-    { label: 'Present Days', value: String(totalPresent), color: [34, 197, 94], bg: [13, 74, 68] },
-    { label: 'Absent Days', value: String(totalAbsent), color: [248, 113, 113], bg: [100, 20, 20] },
-    { label: 'C-Off Days', value: String(cOff), color: [251, 191, 36], bg: [92, 60, 5] },
-    { label: 'OT Hours', value: `${totalOT}h`, color: [251, 146, 60], bg: [100, 45, 10] },
-    { label: 'Avg Attendance', value: `${avgAtt}%`, color: [96, 165, 250], bg: [30, 58, 138] },
+    { label: 'Total Workers', value: String(workers.length), color: [30, 58, 138], bg: [219, 234, 254] },
+    { label: 'Present Days', value: String(totalPresent), color: [13, 74, 68], bg: [204, 251, 241] },
+    { label: 'Absent Days', value: String(totalAbsent), color: [153, 27, 27], bg: [254, 226, 226] },
+    { label: 'C-Off Days', value: String(cOff), color: [146, 64, 14], bg: [254, 243, 199] },
+    { label: 'OT Hours', value: `${totalOT}h`, color: [154, 52, 18], bg: [254, 215, 170] },
+    { label: 'Avg Attendance', value: `${avgAtt}%`, color: [21, 94, 117], bg: [207, 250, 254] },
   ];
   overviewCards.forEach((c, i) => {
     const x = 10 + i * (cardW + 5);
@@ -342,18 +310,18 @@ function drawSummary(doc, autoTable, startY, workers, dates, pageWidth, pageHeig
       { content: '%', styles: { halign: 'center' } },
     ]],
     body: [
-      ['1st Shift', String(shift1), totalPresent > 0 ? ((shift1/totalPresent)*100).toFixed(1)+'%' : '0%'],
-      ['2nd Shift', String(shift2), totalPresent > 0 ? ((shift2/totalPresent)*100).toFixed(1)+'%' : '0%'],
-      ['General', String(general), totalPresent > 0 ? ((general/totalPresent)*100).toFixed(1)+'%' : '0%'],
-      ['Absent (AA)', String(totalAbsent), totalPossible > 0 ? ((totalAbsent/totalPossible)*100).toFixed(1)+'%' : '0%'],
+      ['1st Shift', String(shift1), totalPresent > 0 ? ((shift1 / totalPresent) * 100).toFixed(1) + '%' : '0%'],
+      ['2nd Shift', String(shift2), totalPresent > 0 ? ((shift2 / totalPresent) * 100).toFixed(1) + '%' : '0%'],
+      ['General', String(general), totalPresent > 0 ? ((general / totalPresent) * 100).toFixed(1) + '%' : '0%'],
+      ['Absent (AA)', String(totalAbsent), totalPossible > 0 ? ((totalAbsent / totalPossible) * 100).toFixed(1) + '%' : '0%'],
       ['C-Off', String(cOff), '-'],
       ['Holiday', String(holiday), '-'],
       [{ content: 'OT Days', styles: { textColor: [251, 146, 60] } }, { content: String(totalOTDays), styles: { textColor: [251, 146, 60] } }, { content: `${totalOT}h total`, styles: { textColor: [251, 146, 60] } }],
     ],
     theme: 'plain',
-    styles: { fillColor: [15, 23, 42], textColor: [200, 210, 225], fontSize: 7, lineColor: [30, 41, 59], lineWidth: 0.2, cellPadding: 2.5 },
-    headStyles: { fillColor: [22, 30, 48], textColor: [148, 163, 184], fontStyle: 'bold', fontSize: 7 },
-    alternateRowStyles: { fillColor: [22, 30, 48] },
+    styles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 7, lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 2.5 },
+    headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: 'bold', fontSize: 7 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
   });
 
   // Dept table (right)
@@ -383,9 +351,9 @@ function drawSummary(doc, autoTable, startY, workers, dates, pageWidth, pageHeig
     head: [['Department', 'Workers', 'Present', 'Absent', 'OT', 'Att %']],
     body: deptRows,
     theme: 'plain',
-    styles: { fillColor: [15, 23, 42], textColor: [200, 210, 225], fontSize: 7, lineColor: [30, 41, 59], lineWidth: 0.2, cellPadding: 2.5, halign: 'center' },
-    headStyles: { fillColor: [22, 30, 48], textColor: [148, 163, 184], fontStyle: 'bold', fontSize: 7 },
-    alternateRowStyles: { fillColor: [22, 30, 48] },
+    styles: { fillColor: [255, 255, 255], textColor: [51, 65, 85], fontSize: 7, lineColor: [226, 232, 240], lineWidth: 0.2, cellPadding: 2.5, halign: 'center' },
+    headStyles: { fillColor: [241, 245, 249], textColor: [51, 65, 85], fontStyle: 'bold', fontSize: 7 },
+    alternateRowStyles: { fillColor: [248, 250, 252] },
     columnStyles: { 0: { halign: 'left' } },
   });
 }

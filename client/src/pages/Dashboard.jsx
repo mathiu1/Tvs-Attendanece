@@ -66,10 +66,10 @@ const Dashboard = () => {
   if (loading) return <div className="page-loading"><div className="spinner" /></div>;
 
   const pieData = stats && !isWorker() ? [
-    { name: 'Present', value: stats.todayPresent, color: '#00E396' },
-    { name: 'Absent', value: stats.todayAbsent, color: '#FF4560' },
-    { name: 'C-Off', value: stats.todayCOff || 0, color: '#FEB019' },
-    { name: 'Unmarked', value: stats.unmarked || 0, color: '#737F94' },
+    { name: 'Present', value: stats.todayPresent, color: '#10B981' }, // Professional Green
+    { name: 'Absent', value: stats.todayAbsent, color: '#EF4444' },  // Professional Red
+    { name: 'C-Off', value: stats.todayCOff || 0, color: '#F59E0B' },   // Professional Amber
+    { name: 'Unmarked', value: stats.unmarked || 0, color: '#94A3B8' }, // Neutral Slate
   ].filter(d => d.value > 0) : [];
 
   const barData = stats?.deptChartData || [];
@@ -114,9 +114,9 @@ const Dashboard = () => {
       {stats.pendingAlerts && stats.pendingAlerts.length > 0 && (
         <div style={{ marginBottom: 20 }}>
           {stats.pendingAlerts.map(alert => (
-            <Link 
-              key={alert.id} 
-              to={alert.id === 'a1' ? '/attendance/report' : '/attendance/mark'} 
+            <Link
+              key={alert.id}
+              to={alert.id === 'a1' ? '/attendance/report' : '/attendance/mark'}
               className={`alert-card alert-${alert.type}`}
               style={{ textDecoration: 'none', display: 'flex', transition: 'var(--transition)' }}
             >
@@ -131,25 +131,27 @@ const Dashboard = () => {
       )}
 
       {/* Snapshot cards above charts */}
-      <div className="dash-snapshot-grid">
-        <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🏆</div>
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Top Department</div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>{stats.topDept ? stats.topDept.name : 'N/A'} <span style={{ color: '#4ade80', fontSize: 12 }}>({stats.topDept ? stats.topDept.rate : 0}%)</span></div>
+      {isHR() && (
+        <div className="dash-snapshot-grid">
+          <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: 'rgba(34,197,94,0.1)', color: '#4ade80', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>🏆</div>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Top Department</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{stats.topDept ? stats.topDept.name : 'N/A'} <span style={{ color: '#4ade80', fontSize: 12 }}>({stats.topDept ? stats.topDept.rate : 0}%)</span></div>
+            </div>
+          </div>
+          <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
+            <div style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⚠️</div>
+            <div>
+              <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Lowest Attendance</div>
+              <div style={{ fontSize: 15, fontWeight: 600 }}>{stats.bottomDept ? stats.bottomDept.name : 'N/A'} <span style={{ color: '#f87171', fontSize: 12 }}>({stats.bottomDept ? stats.bottomDept.rate : 0}%)</span></div>
+            </div>
           </div>
         </div>
-        <div className="glass-card" style={{ padding: 16, display: 'flex', alignItems: 'center', gap: 12 }}>
-          <div style={{ background: 'rgba(239,68,68,0.1)', color: '#f87171', width: 40, height: 40, borderRadius: 10, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 20 }}>⚠️</div>
-          <div>
-            <div style={{ fontSize: 12, color: 'var(--text-secondary)' }}>Lowest Attendance</div>
-            <div style={{ fontSize: 15, fontWeight: 600 }}>{stats.bottomDept ? stats.bottomDept.name : 'N/A'} <span style={{ color: '#f87171', fontSize: 12 }}>({stats.bottomDept ? stats.bottomDept.rate : 0}%)</span></div>
-          </div>
-        </div>
-      </div>
+      )}
 
       <div className="dash-charts-grid">
-        
+
         {/* Left Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
           <div className="glass-card dash-chart-card">
@@ -163,74 +165,82 @@ const Dashboard = () => {
                 <span style={{ color: '#737F94' }}>UM: <strong>{stats.unmarked}</strong></span>
               </div>
             </div>
-            <ResponsiveContainer width="100%" height="80%">
-              <PieChart>
-                <Pie data={pieData} cx="50%" cy="50%" innerRadius={50} outerRadius={80} paddingAngle={5} dataKey="value">
-                  {pieData.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.color} />
-                  ))}
-                </Pie>
-                <RechartsTooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 8 }} itemStyle={{ color: 'var(--text-primary)' }} />
-                <Legend verticalAlign="bottom" height={48} wrapperStyle={{ paddingTop: '10px' }}/>
-              </PieChart>
-            </ResponsiveContainer>
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: '320px', height: '240px' }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie data={pieData} cx="50%" cy="50%" innerRadius="50%" outerRadius="75%" paddingAngle={5} dataKey="value">
+                      {pieData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <RechartsTooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 8 }} itemStyle={{ color: 'var(--text-primary)' }} />
+                    <Legend verticalAlign="bottom" height={48} wrapperStyle={{ paddingTop: '10px' }} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </div>
 
           {stats.trendData && (
             <div className="glass-card" style={{ height: 280 }}>
               <h3 style={{ margin: '0 0 15px 0', fontSize: 16 }}>7-Day Attendance Trend</h3>
-              <ResponsiveContainer width="100%" height="80%">
-                <AreaChart data={stats.trendData} margin={{ top: 10, right: 0, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#00E396" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#00E396" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#FF4560" stopOpacity={0.3}/>
-                      <stop offset="95%" stopColor="#FF4560" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="displayDate" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <RechartsTooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                  <Area type="monotone" dataKey="present" name="Present" stroke="#00E396" strokeWidth={2} fillOpacity={1} fill="url(#colorPresent)" />
-                  <Area type="monotone" dataKey="absent" name="Absent" stroke="#FF4560" strokeWidth={2} fillOpacity={1} fill="url(#colorAbsent)" />
-                </AreaChart>
-              </ResponsiveContainer>
+              <div style={{ overflowX: 'auto' }}>
+                <div style={{ minWidth: '400px', height: '220px' }}>
+                  <ResponsiveContainer width="100%" height="100%">
+                    <AreaChart data={stats.trendData} margin={{ top: 10, right: 10, left: 0, bottom: 0 }}>
+                      <defs>
+                        <linearGradient id="colorPresent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#10B981" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#10B981" stopOpacity={0} />
+                        </linearGradient>
+                        <linearGradient id="colorAbsent" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#EF4444" stopOpacity={0.4} />
+                          <stop offset="95%" stopColor="#EF4444" stopOpacity={0} />
+                        </linearGradient>
+                      </defs>
+                      <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                      <XAxis dataKey="displayDate" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                      <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                      <RechartsTooltip contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                      <Area type="monotone" dataKey="present" name="Present" stroke="#10B981" strokeWidth={3} fillOpacity={1} fill="url(#colorPresent)" />
+                      <Area type="monotone" dataKey="absent" name="Absent" stroke="#EF4444" strokeWidth={3} fillOpacity={1} fill="url(#colorAbsent)" />
+                    </AreaChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
             </div>
           )}
         </div>
 
         {/* Right Column */}
         <div style={{ display: 'flex', flexDirection: 'column', gap: '20px' }}>
-          
+
           <div className="glass-card">
             <div className="dash-absent-header">
               <h3 style={{ margin: 0, fontSize: 16 }}>Today's Absent List</h3>
               <div style={{ display: 'flex', gap: 5 }}>
-                <button 
-                  onClick={() => setAbsentFilter('without_inform')} 
+                <button
+                  onClick={() => setAbsentFilter('without_inform')}
                   style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border)', background: absentFilter === 'without_inform' ? 'rgba(239, 68, 68, 0.2)' : 'transparent', color: absentFilter === 'without_inform' ? '#fca5a5' : 'var(--text-secondary)' }}
                 >
                   W/O Inform
                 </button>
-                <button 
-                  onClick={() => setAbsentFilter('informed')} 
+                <button
+                  onClick={() => setAbsentFilter('informed')}
                   style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border)', background: absentFilter === 'informed' ? 'rgba(59, 130, 246, 0.2)' : 'transparent', color: absentFilter === 'informed' ? '#93c5fd' : 'var(--text-secondary)' }}
                 >
                   Informed
                 </button>
-                <button 
-                  onClick={() => setAbsentFilter('overall')} 
+                <button
+                  onClick={() => setAbsentFilter('overall')}
                   style={{ padding: '4px 8px', fontSize: 11, borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border)', background: absentFilter === 'overall' ? 'rgba(255, 255, 255, 0.1)' : 'transparent', color: absentFilter === 'overall' ? 'var(--text-primary)' : 'var(--text-secondary)' }}
                 >
                   Overall
                 </button>
               </div>
             </div>
-            
+
             {(() => {
               const filteredList = (stats.absentList || []).filter(a => {
                 if (absentFilter === 'overall') return true;
@@ -240,7 +250,7 @@ const Dashboard = () => {
               });
 
               return filteredList.length > 0 ? (
-                <div style={{ overflowY: 'auto', maxHeight: '250px' }}>
+                <div style={{ overflowX: 'auto', overflowY: 'auto', maxHeight: '250px' }}>
                   <table className="data-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr>
@@ -282,20 +292,22 @@ const Dashboard = () => {
 
           <div className="glass-card">
             <h3 style={{ marginTop: 0, marginBottom: 15, fontSize: 16 }}>Department Breakdown</h3>
-            <div style={{ height: 220, marginBottom: 20 }}>
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={barData} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
-                  <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
-                  <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
-                  <RechartsTooltip cursor={{ fill: 'var(--hover-bg)' }} contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 8 }} />
-                  <Legend wrapperStyle={{ fontSize: 12 }} />
-                  <Bar dataKey="present" stackId="a" fill="#00E396" name="Present" radius={[0, 0, 4, 4]} />
-                  <Bar dataKey="cOff" stackId="a" fill="#FEB019" name="C-Off" />
-                  <Bar dataKey="absent" stackId="a" fill="#FF4560" name="Absent" />
-                  <Bar dataKey="unmarked" stackId="a" fill="#737F94" name="Unmarked" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+            <div style={{ overflowX: 'auto' }}>
+              <div style={{ minWidth: '400px', height: '220px', marginBottom: 20 }}>
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={barData} margin={{ top: 0, right: 0, left: 0, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                    <XAxis dataKey="name" stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} />
+                    <YAxis stroke="var(--text-secondary)" fontSize={12} tickLine={false} axisLine={false} allowDecimals={false} />
+                    <RechartsTooltip cursor={{ fill: 'var(--hover-bg)' }} contentStyle={{ background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: 8 }} />
+                    <Legend wrapperStyle={{ fontSize: 12 }} />
+                    <Bar dataKey="present" stackId="a" fill="#10B981" name="Present" radius={[0, 0, 4, 4]} />
+                    <Bar dataKey="cOff" stackId="a" fill="#F59E0B" name="C-Off" />
+                    <Bar dataKey="absent" stackId="a" fill="#EF4444" name="Absent" />
+                    <Bar dataKey="unmarked" stackId="a" fill="#94A3B8" name="Unmarked" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
             </div>
             <div style={{ overflowX: 'auto' }}>
               <table className="data-table" style={{ width: '100%', textAlign: 'left', borderCollapse: 'collapse', fontSize: 13 }}>
@@ -339,15 +351,15 @@ const Dashboard = () => {
           <h1 className="welcome-text">Welcome, {user?.name?.split(' ')[0]} 👋</h1>
           <p style={{ color: 'var(--text-secondary)', fontSize: '14px', marginTop: '4px' }}>{isHR() ? 'HR Admin Dashboard' : isSupervisor() ? `Supervisor — ${user?.department?.name || ''}` : 'Your Attendance Overview'}</p>
         </div>
-        
+
         {/* QUICK LOOKUP */}
         {!isWorker() && (
           <div className="lookup-container">
             <HiOutlineSearch className="lookup-icon" />
-            <input 
-              type="text" 
-              className="lookup-input" 
-              placeholder="Quick search worker..." 
+            <input
+              type="text"
+              className="lookup-input"
+              placeholder="Quick search worker..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
             />
@@ -376,7 +388,7 @@ const Dashboard = () => {
         )}
       </div>
       <div className="page-content">
-        
+
         {/* HR Dashboard */}
         {isHR() && stats && (
           <>

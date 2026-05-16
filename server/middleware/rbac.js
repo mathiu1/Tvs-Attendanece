@@ -74,7 +74,7 @@ const departmentScope = () => {
 };
 
 /**
- * Restrict Supervisors to only mark attendance for the current date.
+ * Restrict Supervisors to only mark attendance for the current date and yesterday.
  */
 const currentDateOnly = () => {
   return (req, res, next) => {
@@ -85,15 +85,18 @@ const currentDateOnly = () => {
       const today = new Date();
       today.setHours(0, 0, 0, 0);
 
+      const yesterday = new Date(today);
+      yesterday.setDate(yesterday.getDate() - 1);
+
       // Check single date
       if (req.body.date) {
         const requestedDate = new Date(req.body.date);
         requestedDate.setHours(0, 0, 0, 0);
 
-        if (requestedDate.getTime() !== today.getTime()) {
+        if (requestedDate.getTime() !== today.getTime() && requestedDate.getTime() !== yesterday.getTime()) {
           return res.status(403).json({
             success: false,
-            message: 'Supervisors can only mark attendance for the current date',
+            message: 'Supervisors can only mark attendance for today and yesterday',
           });
         }
       }
@@ -105,11 +108,10 @@ const currentDateOnly = () => {
             const recordDate = new Date(record.date);
             recordDate.setHours(0, 0, 0, 0);
 
-            if (recordDate.getTime() !== today.getTime()) {
+            if (recordDate.getTime() !== today.getTime() && recordDate.getTime() !== yesterday.getTime()) {
               return res.status(403).json({
                 success: false,
-                message:
-                  'Supervisors can only mark attendance for the current date',
+                message: 'Supervisors can only mark attendance for today and yesterday',
               });
             }
           }

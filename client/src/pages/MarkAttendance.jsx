@@ -21,15 +21,21 @@ const MarkAttendance = () => {
   const [selectedDept, setSelectedDept] = useState('');
   const [workers, setWorkers] = useState([]);
   const [records, setRecords] = useState({});
-  const todayDate = new Date().toISOString().split('T')[0];
+  const todayDate = (() => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  })();
   const yesterdayDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() - 1);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().split('T')[0];
   })();
   const tenDaysAgoDate = (() => {
     const d = new Date();
     d.setDate(d.getDate() - 10);
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
     return d.toISOString().split('T')[0];
   })();
 
@@ -179,8 +185,15 @@ const MarkAttendance = () => {
           <div className="filter-group" style={{ flex: 'none' }}>
             <label>&nbsp;</label>
             <div style={{ display: 'flex', gap: '8px' }}>
-              <button className="btn btn-primary" onClick={handleSubmit} disabled={submitting}>
-                <HiOutlineSave /> {submitting ? 'Saving...' : 'Save All'}
+              <button className="btn btn-primary save-all-mobile-fixed" onClick={handleSubmit} disabled={submitting}>
+                {submitting ? (
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                    <div className="loader"></div>
+                    <span>Saving...</span>
+                  </div>
+                ) : (
+                  <><HiOutlineSave /> Save All</>
+                )}
               </button>
             </div>
           </div>
