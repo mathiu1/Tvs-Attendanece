@@ -59,23 +59,47 @@ exports.markAttendance = async (req, res) => {
         const existing = await Attendance.findOne({ worker: workerId, date: attendanceDate });
         if (existing) {
           // Update existing record
+          let changes = [];
+          
           if (status && status !== existing.status) {
+            changes.push(`Status: ${existing.status} -> ${status}`);
             existing.status = status;
             existing.markedBy = req.user._id;
           }
-          if (status === 'AA' && absentType) {
-            existing.absentType = absentType;
-          } else if (status !== 'AA') {
-            existing.absentType = undefined; // clear it if no longer absent
+          
+          if (status === 'AA' || existing.status === 'AA') {
+             if (absentType && absentType !== existing.absentType) {
+               changes.push(`Absent Type: ${existing.absentType} -> ${absentType}`);
+               existing.absentType = absentType;
+             }
+          } else {
+             if (existing.absentType) {
+               changes.push(`Absent Type cleared`);
+               existing.absentType = undefined;
+             }
           }
           
           if (otHours !== undefined && otHours !== existing.otHours) {
+            changes.push(`OT Hours: ${existing.otHours} -> ${otHours}`);
             existing.otHours = otHours || 0;
             existing.otMarkedBy = (otHours > 0) ? req.user._id : undefined;
           }
-          if (remarks !== undefined) existing.remarks = remarks;
+          
+          if (remarks !== undefined && remarks !== existing.remarks) {
+            changes.push(`Remarks: "${existing.remarks}" -> "${remarks}"`);
+            existing.remarks = remarks;
+          }
           
           if (!existing.markedBy) existing.markedBy = req.user._id; // fallback
+          
+          if (changes.length > 0) {
+            existing.history.push({
+              user: req.user._id,
+              date: new Date(),
+              details: changes.join(', ')
+            });
+          }
+          
           await existing.save();
           results.push(existing);
         } else {
@@ -121,6 +145,7 @@ exports.getMyHistory = async (req, res) => {
 
     const attendance = await Attendance.find(filter)
       .populate('markedBy', 'name')
+      .populate('history.user', 'name')
       .populate('department', 'name code')
       .sort({ date: -1 });
 
@@ -157,6 +182,7 @@ exports.getReport = async (req, res) => {
       .populate('worker', 'name employeeId')
       .populate('markedBy', 'name')
       .populate('otMarkedBy', 'name')
+      .populate('history.user', 'name')
       .populate('department', 'name code')
       .sort({ date: -1, 'worker.name': 1 })
       .lean();
@@ -214,23 +240,44 @@ exports.updateAttendance = async (req, res) => {
     const attendance = await Attendance.findById(req.params.id);
     if (!attendance) return res.status(404).json({ success: false, message: 'Record not found' });
 
+    let changes = [];
+
     if (status && status !== attendance.status) {
+      changes.push(`Status: ${attendance.status} -> ${status}`);
       attendance.status = status;
       attendance.markedBy = req.user._id;
     }
 
     if (status === 'AA' || attendance.status === 'AA') {
-       if (absentType) attendance.absentType = absentType;
+       if (absentType && absentType !== attendance.absentType) {
+         changes.push(`Absent Type: ${attendance.absentType} -> ${absentType}`);
+         attendance.absentType = absentType;
+       }
     } else {
-       attendance.absentType = undefined;
+       if (attendance.absentType) {
+         changes.push(`Absent Type cleared`);
+         attendance.absentType = undefined;
+       }
     }
     
     if (otHours !== undefined && otHours !== attendance.otHours) {
+      changes.push(`OT Hours: ${attendance.otHours} -> ${otHours}`);
       attendance.otHours = otHours || 0;
       attendance.otMarkedBy = (otHours > 0) ? req.user._id : undefined;
     }
     
-    if (remarks !== undefined) attendance.remarks = remarks;
+    if (remarks !== undefined && remarks !== attendance.remarks) {
+      changes.push(`Remarks: "${attendance.remarks}" -> "${remarks}"`);
+      attendance.remarks = remarks;
+    }
+
+    if (changes.length > 0) {
+      attendance.history.push({
+        user: req.user._id,
+        date: new Date(),
+        details: changes.join(', ')
+      });
+    }
 
     await attendance.save();
 
@@ -238,6 +285,7 @@ exports.updateAttendance = async (req, res) => {
       .populate('worker', 'name employeeId')
       .populate('markedBy', 'name')
       .populate('otMarkedBy', 'name')
+      .populate('history.user', 'name')
       .populate('department', 'name code');
 
     res.json({ success: true, attendance: updated });

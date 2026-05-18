@@ -16,7 +16,8 @@ const ManageUsers = () => {
   const [filterRole, setFilterRole] = useState('');
   const [filterDept, setFilterDept] = useState('');
   const [filterActive, setFilterActive] = useState('true');
-  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'worker', department: '', employeeId: '', phone: '', designation: '', dateOfJoining: '', address: '' });
+  const [form, setForm] = useState({ name: '', email: '', password: '', role: 'worker', department: '', employeeId: '', phone: '', designation: '', dateOfJoining: '', address: '', emergencyPhone: '' });
+  const [errors, setErrors] = useState({});
 
   useEffect(() => { fetchUsers(); fetchDepartments(); }, []);
 
@@ -45,7 +46,7 @@ const ManageUsers = () => {
 
   const openCreate = () => {
     setEditing(null);
-    setForm({ name: '', email: '', password: '', role: 'worker', department: '', employeeId: '', phone: '', designation: '', dateOfJoining: '', address: '' });
+    setForm({ name: '', email: '', password: '', role: 'worker', department: '', employeeId: '', phone: '', designation: '', dateOfJoining: '', address: '', emergencyPhone: '' });
     setShowModal(true);
   };
 
@@ -56,16 +57,43 @@ const ManageUsers = () => {
       department: user.department?._id || '', employeeId: user.employeeId || '',
       phone: user.phone || '', designation: user.designation || '',
       dateOfJoining: user.dateOfJoining ? user.dateOfJoining.split('T')[0] : '', address: user.address || '',
+      emergencyPhone: user.emergencyContact?.phone || '',
     });
     setShowModal(true);
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Custom validation
+    const newErrors = {};
+    if (!form.name) newErrors.name = 'Name is required';
+    if (!form.email) newErrors.email = 'Email is required';
+    if (!editing && !form.password) newErrors.password = 'Password is required';
+    if (!form.employeeId) newErrors.employeeId = 'Employee ID is required';
+    if (!form.phone) newErrors.phone = 'Phone is required';
+    if (!form.designation) newErrors.designation = 'Designation is required';
+    if (!form.dateOfJoining) newErrors.dateOfJoining = 'Date of Joining is required';
+    if (!form.emergencyPhone) newErrors.emergencyPhone = 'Emergency Phone is required';
+    
+    if (form.role !== 'hr' && !form.department) {
+      newErrors.department = 'Department is required';
+    }
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Please fill all mandatory fields');
+      return;
+    }
+
     try {
       const payload = { ...form };
       if (!payload.password) delete payload.password;
       if (payload.role === 'hr') delete payload.department;
+      
+      payload.emergencyContact = { ...payload.emergencyContact, phone: form.emergencyPhone };
+      delete payload.emergencyPhone;
 
       if (editing) {
         await API.put(`/users/${editing}`, payload);
@@ -243,23 +271,141 @@ const ManageUsers = () => {
               <form onSubmit={handleSubmit}>
                 <div className="modal-body">
                   <div className="form-row">
-                    <div className="form-group"><label className="form-label">Name *</label><input className="form-input" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} required /></div>
-                    <div className="form-group"><label className="form-label">Email *</label><input className="form-input" type="email" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} required /></div>
+                    <div className="form-group">
+                      <label className="form-label">Name *</label>
+                      <input 
+                        className="form-input" 
+                        style={{ border: errors.name ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.name} 
+                        onChange={(e) => {
+                          setForm({ ...form, name: e.target.value });
+                          if (errors.name) setErrors({ ...errors, name: '' });
+                        }} 
+                      />
+                      {errors.name && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.name}</span>}
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Email *</label>
+                      <input 
+                        className="form-input" 
+                        type="email" 
+                        style={{ border: errors.email ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.email} 
+                        onChange={(e) => {
+                          setForm({ ...form, email: e.target.value });
+                          if (errors.email) setErrors({ ...errors, email: '' });
+                        }} 
+                      />
+                      {errors.email && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.email}</span>}
+                    </div>
                   </div>
                   <div className="form-row">
-                    <div className="form-group"><label className="form-label">{editing ? 'New Password' : 'Password *'}</label><input className="form-input" type="password" value={form.password} onChange={(e) => setForm({ ...form, password: e.target.value })} required={!editing} placeholder={editing ? 'Leave blank to keep' : ''} /></div>
+                    <div className="form-group">
+                      <label className="form-label">{editing ? 'New Password' : 'Password *'}</label>
+                      <input 
+                        className="form-input" 
+                        type="password" 
+                        style={{ border: errors.password ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.password} 
+                        onChange={(e) => {
+                          setForm({ ...form, password: e.target.value });
+                          if (errors.password) setErrors({ ...errors, password: '' });
+                        }} 
+                        placeholder={editing ? 'Leave blank to keep' : ''} 
+                      />
+                      {errors.password && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.password}</span>}
+                    </div>
                     <div className="form-group"><label className="form-label">Role *</label><CustomSelect value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} options={[{ value: 'worker', label: 'Worker' }, { value: 'supervisor', label: 'Supervisor' }, { value: 'hr', label: 'HR' }]} /></div>
                   </div>
                   {form.role !== 'hr' && (
-                    <div className="form-group"><label className="form-label">Department *</label><CustomSelect value={form.department} onChange={(e) => setForm({ ...form, department: e.target.value })} placeholder="Select..." required options={[{ value: '', label: 'Select...' }, ...departments.map(d => ({ value: d._id, label: d.name }))]} /></div>
+                    <div className="form-group">
+                      <label className="form-label">Department *</label>
+                      <div style={{ border: errors.department ? '1px solid var(--danger)' : 'none', borderRadius: 6 }}>
+                        <CustomSelect 
+                          value={form.department} 
+                          onChange={(e) => {
+                            setForm({ ...form, department: e.target.value });
+                            if (errors.department) setErrors({ ...errors, department: '' });
+                          }} 
+                          placeholder="Select..." 
+                          options={[{ value: '', label: 'Select...' }, ...departments.map(d => ({ value: d._id, label: d.name }))]} 
+                        />
+                      </div>
+                      {errors.department && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.department}</span>}
+                    </div>
                   )}
                   <div className="form-row">
-                    <div className="form-group"><label className="form-label">Employee ID</label><input className="form-input" value={form.employeeId} onChange={(e) => setForm({ ...form, employeeId: e.target.value })} /></div>
-                    <div className="form-group"><label className="form-label">Phone</label><input className="form-input" value={form.phone} onChange={(e) => setForm({ ...form, phone: e.target.value })} /></div>
+                    <div className="form-group">
+                      <label className="form-label">Employee ID *</label>
+                      <input 
+                        className="form-input" 
+                        style={{ border: errors.employeeId ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.employeeId} 
+                        onChange={(e) => {
+                          setForm({ ...form, employeeId: e.target.value });
+                          if (errors.employeeId) setErrors({ ...errors, employeeId: '' });
+                        }} 
+                      />
+                      {errors.employeeId && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.employeeId}</span>}
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Phone *</label>
+                      <input 
+                        className="form-input" 
+                        style={{ border: errors.phone ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.phone} 
+                        onChange={(e) => {
+                          setForm({ ...form, phone: e.target.value });
+                          if (errors.phone) setErrors({ ...errors, phone: '' });
+                        }} 
+                      />
+                      {errors.phone && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.phone}</span>}
+                    </div>
                   </div>
                   <div className="form-row">
-                    <div className="form-group"><label className="form-label">Designation</label><input className="form-input" value={form.designation} onChange={(e) => setForm({ ...form, designation: e.target.value })} /></div>
-                    <div className="form-group"><label className="form-label">Date of Joining</label><input className="form-input" type="date" value={form.dateOfJoining} onChange={(e) => setForm({ ...form, dateOfJoining: e.target.value })} /></div>
+                    <div className="form-group">
+                      <label className="form-label">Designation *</label>
+                      <input 
+                        className="form-input" 
+                        style={{ border: errors.designation ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.designation} 
+                        onChange={(e) => {
+                          setForm({ ...form, designation: e.target.value });
+                          if (errors.designation) setErrors({ ...errors, designation: '' });
+                        }} 
+                      />
+                      {errors.designation && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.designation}</span>}
+                    </div>
+                    <div className="form-group">
+                      <label className="form-label">Date of Joining *</label>
+                      <input 
+                        className="form-input" 
+                        type="date" 
+                        style={{ border: errors.dateOfJoining ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.dateOfJoining} 
+                        onChange={(e) => {
+                          setForm({ ...form, dateOfJoining: e.target.value });
+                          if (errors.dateOfJoining) setErrors({ ...errors, dateOfJoining: '' });
+                        }} 
+                      />
+                      {errors.dateOfJoining && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.dateOfJoining}</span>}
+                    </div>
+                  </div>
+                  <div className="form-row">
+                    <div className="form-group">
+                      <label className="form-label">Emergency Phone *</label>
+                      <input 
+                        className="form-input" 
+                        style={{ border: errors.emergencyPhone ? '1px solid var(--danger)' : '1px solid var(--border)' }}
+                        value={form.emergencyPhone} 
+                        onChange={(e) => {
+                          setForm({ ...form, emergencyPhone: e.target.value });
+                          if (errors.emergencyPhone) setErrors({ ...errors, emergencyPhone: '' });
+                        }} 
+                      />
+                      {errors.emergencyPhone && <span style={{ color: 'var(--danger)', fontSize: 11, marginTop: 2 }}>{errors.emergencyPhone}</span>}
+                    </div>
+                    <div className="form-group"></div>
                   </div>
                   <div className="form-group"><label className="form-label">Address</label><textarea className="form-input" value={form.address} onChange={(e) => setForm({ ...form, address: e.target.value })} /></div>
                 </div>
@@ -334,6 +480,16 @@ const ManageUsers = () => {
                     <div>
                       <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Phone Number</div>
                       <div style={{ fontSize: 15, fontWeight: 500, marginTop: 2 }}>{viewUser.phone || '—'}</div>
+                    </div>
+                  </div>
+
+                  <div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}>
+                    <div style={{ background: 'var(--bg-secondary)', padding: 10, borderRadius: 8, color: '#ef4444' }}>
+                      <HiOutlinePhone size={20} />
+                    </div>
+                    <div>
+                      <div style={{ fontSize: 12, color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.5px' }}>Emergency Phone</div>
+                      <div style={{ fontSize: 15, fontWeight: 500, marginTop: 2 }}>{viewUser.emergencyContact?.phone || '—'}</div>
                     </div>
                   </div>
 

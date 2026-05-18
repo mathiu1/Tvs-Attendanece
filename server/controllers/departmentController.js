@@ -1,4 +1,5 @@
 const Department = require('../models/Department');
+const User = require('../models/User');
 
 exports.getDepartments = async (req, res) => {
   try {
@@ -47,6 +48,17 @@ exports.deleteDepartment = async (req, res) => {
   try {
     const department = await Department.findById(req.params.id);
     if (!department) return res.status(404).json({ success: false, message: 'Department not found' });
+    
+    // Check if there are users in this department
+    const usersInDept = await User.find({ department: req.params.id }).select('name');
+    if (usersInDept.length > 0) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Cannot deactivate department. Move users first.',
+        users: usersInDept.map(u => u.name)
+      });
+    }
+
     department.isActive = false;
     await department.save();
     res.json({ success: true, message: 'Department deactivated successfully' });

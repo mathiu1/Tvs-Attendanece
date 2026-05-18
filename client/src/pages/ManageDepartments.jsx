@@ -10,6 +10,17 @@ const ManageDepartments = () => {
   const [deleteConfirm, setDeleteConfirm] = useState(null);
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState({ name: '', code: '', description: '' });
+  const [deptUsers, setDeptUsers] = useState([]);
+
+  const handleReactivate = async (id) => {
+    try {
+      await API.put(`/departments/${id}`, { isActive: true });
+      toast.success('Department reactivated');
+      fetchDepartments();
+    } catch {
+      toast.error('Failed to reactivate');
+    }
+  };
 
   useEffect(() => { fetchDepartments(); }, []);
 
@@ -42,9 +53,15 @@ const ManageDepartments = () => {
       await API.delete(`/departments/${deleteConfirm.id}`);
       toast.success('Deactivated');
       setDeleteConfirm(null);
+      setDeptUsers([]);
       fetchDepartments();
-    } catch {
-      toast.error('Failed to deactivate');
+    } catch (err) {
+      if (err.response?.data?.users) {
+        setDeptUsers(err.response.data.users);
+      } else {
+        toast.error(err.response?.data?.message || 'Failed to deactivate');
+        setDeleteConfirm(null);
+      }
     }
   };
 
@@ -71,7 +88,11 @@ const ManageDepartments = () => {
                       <td>
                         <div style={{ display: 'flex', gap: 4 }}>
                           <button className="btn btn-outline btn-sm btn-icon" onClick={() => openEdit(d)}><HiOutlinePencil /></button>
-                          <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDeleteClick(d._id, d.name)} style={{ color: 'var(--danger)' }}><HiOutlineTrash /></button>
+                          {d.isActive ? (
+                            <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDeleteClick(d._id, d.name)} style={{ color: 'var(--danger)' }}><HiOutlineTrash /></button>
+                          ) : (
+                            <button className="btn btn-outline btn-sm" style={{ color: 'var(--success)', padding: '2px 6px', fontSize: 12 }} onClick={() => handleReactivate(d._id)}>Reactivate</button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -86,7 +107,11 @@ const ManageDepartments = () => {
                     <div><div style={{ fontWeight: 600, fontSize: 15 }}>{d.name}</div><span className="badge badge-shift1" style={{ marginTop: 4 }}>{d.code}</span></div>
                     <div style={{ display: 'flex', gap: 4 }}>
                       <button className="btn btn-outline btn-sm btn-icon" onClick={() => openEdit(d)}><HiOutlinePencil /></button>
-                      <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDeleteClick(d._id, d.name)} style={{ color: 'var(--danger)' }}><HiOutlineTrash /></button>
+                      {d.isActive ? (
+                        <button className="btn btn-outline btn-sm btn-icon" onClick={() => handleDeleteClick(d._id, d.name)} style={{ color: 'var(--danger)' }}><HiOutlineTrash /></button>
+                      ) : (
+                        <button className="btn btn-outline btn-sm" style={{ color: 'var(--success)', padding: '2px 6px', fontSize: 12 }} onClick={() => handleReactivate(d._id)}>Reactivate</button>
+                      )}
                     </div>
                   </div>
                   <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>{d.description || 'No description'}</p>
@@ -114,19 +139,34 @@ const ManageDepartments = () => {
 
         {/* Delete Confirmation Modal */}
         {deleteConfirm && (
-          <div className="modal-overlay" onClick={() => setDeleteConfirm(null)}>
+          <div className="modal-overlay" onClick={() => { setDeleteConfirm(null); setDeptUsers([]); }}>
             <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 400 }}>
               <div className="modal-header">
                 <h3>Confirm Deactivation</h3>
-                <button className="modal-close" onClick={() => setDeleteConfirm(null)}><HiOutlineX /></button>
+                <button className="modal-close" onClick={() => { setDeleteConfirm(null); setDeptUsers([]); }}><HiOutlineX /></button>
               </div>
               <div className="modal-body">
-                <p>Are you sure you want to deactivate the department <strong>{deleteConfirm.name}</strong>?</p>
-                <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>This action can be reversed by an administrator later.</p>
+                {deptUsers.length > 0 ? (
+                  <>
+                    <p style={{ color: 'var(--danger)', fontWeight: 600 }}>Cannot deactivate department.</p>
+                    <p>The following users are still in this department:</p>
+                    <div style={{ maxHeight: 100, overflowY: 'auto', background: 'rgba(0,0,0,0.1)', padding: 8, borderRadius: 4, marginTop: 5 }}>
+                      {deptUsers.map((u, i) => <div key={i} style={{ fontSize: 13 }}>{u}</div>)}
+                    </div>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)', marginTop: 10 }}>First move all persons to other dept, next deactivate that.</p>
+                  </>
+                ) : (
+                  <>
+                    <p>Are you sure you want to deactivate the department <strong>{deleteConfirm.name}</strong>?</p>
+                    <p style={{ fontSize: 13, color: 'var(--text-muted)' }}>This action can be reversed by an administrator later.</p>
+                  </>
+                )}
               </div>
               <div className="modal-footer">
-                <button type="button" className="btn btn-outline" onClick={() => setDeleteConfirm(null)}>Cancel</button>
-                <button type="button" className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={confirmDelete}>Deactivate</button>
+                <button type="button" className="btn btn-outline" onClick={() => { setDeleteConfirm(null); setDeptUsers([]); }}>{deptUsers.length > 0 ? 'Close' : 'Cancel'}</button>
+                {deptUsers.length === 0 && (
+                  <button type="button" className="btn" style={{ background: 'var(--danger)', color: 'white' }} onClick={confirmDelete}>Deactivate</button>
+                )}
               </div>
             </div>
           </div>

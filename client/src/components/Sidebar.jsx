@@ -22,6 +22,10 @@ const Sidebar = ({ isOpen, onClose }) => {
     );
   }
 
+  if (isHR() || isSupervisor()) {
+    navItems.push({ to: '/shifts', label: 'Shift Schedule', icon: <HiOutlineClock className="icon" /> });
+  }
+
   navItems.push({ to: '/attendance/report', label: 'Reports', icon: <HiOutlineDocumentReport className="icon" /> });
 
   const initials = user?.name?.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase() || '?';

@@ -51,6 +51,7 @@ const AttendanceReport = () => {
   const [editOtHours, setEditOtHours] = useState('');
   const [editRemarks, setEditRemarks] = useState('');
   const [isUpdating, setIsUpdating] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
 
   const [holidayConfirmDate, setHolidayConfirmDate] = useState(null);
 
@@ -233,6 +234,7 @@ const AttendanceReport = () => {
         remarks: r.remarks,
         markedBy: r.markedBy?.name,
         otMarkedBy: r.otMarkedBy?.name,
+        history: r.history,
         date: r.date,
         workerId: wId,
         workerName: workerMap[wId].name,
@@ -288,12 +290,8 @@ const AttendanceReport = () => {
   };
 
   const handleCellClick = (entry, dateObj, worker) => {
-    if (!isDateEditable(dateObj)) {
-      if (isFutureDate(dateObj)) {
-        toast.error('Cannot select future dates');
-      } else {
-        toast.error(isSupervisor() ? 'Supervisors can only update today and yesterday' : 'HR can only update attendance for the last 10 days');
-      }
+    if (isFutureDate(dateObj)) {
+      toast.error('Cannot select future dates');
       return;
     }
     if (entry) {
@@ -729,7 +727,35 @@ const AttendanceReport = () => {
                 <p style={{ margin: '0 0 5px 0', fontSize: 14 }}><strong>Employee:</strong> {selectedCell.workerName}</p>
                 <p style={{ margin: '0 0 5px 0', fontSize: 14 }}><strong>Date:</strong> {selectedCell.displayDate}</p>
                 {selectedCell.markedBy && <p style={{ margin: '0 0 5px 0', fontSize: 14 }}><strong>Shift Saved By:</strong> {selectedCell.markedBy}</p>}
-                {selectedCell.otMarkedBy && <p style={{ margin: 0, fontSize: 14 }}><strong>OT Saved By:</strong> {selectedCell.otMarkedBy}</p>}
+                {selectedCell.otMarkedBy && <p style={{ margin: '0 0 5px 0', fontSize: 14 }}><strong>OT Saved By:</strong> {selectedCell.otMarkedBy}</p>}
+                
+                {selectedCell.history && selectedCell.history.length > 0 && (
+                  <div style={{ marginTop: 10, borderTop: '1px solid var(--border)', paddingTop: 10 }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 5 }}>
+                      <p style={{ margin: 0, fontSize: 13, color: 'var(--text-secondary)' }}><strong>Change History:</strong></p>
+                      {selectedCell.history.length > 1 && (
+                        <button 
+                          className="btn-text" 
+                          style={{ fontSize: 11, background: 'none', border: 'none', color: '#60a5fa', cursor: 'pointer', padding: 0 }} 
+                          onClick={() => setShowHistoryModal(true)}
+                        >
+                          View All ({selectedCell.history.length})
+                        </button>
+                      )}
+                    </div>
+                    <div style={{ fontSize: 12, background: 'rgba(0,0,0,0.1)', padding: 6, borderRadius: 4 }}>
+                      {(() => {
+                        const h = selectedCell.history[selectedCell.history.length - 1]; // Most recent is at the end
+                        return (
+                          <div>
+                            <span style={{ color: 'var(--text-muted)' }}>{new Date(h.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}:</span>{' '}
+                            <strong>{h.user?.name || 'Unknown'}</strong> - <span>{h.details}</span>
+                          </div>
+                        );
+                      })()}
+                    </div>
+                  </div>
+                )}
               </div>
               
               <div className="form-group">
@@ -796,6 +822,39 @@ const AttendanceReport = () => {
               <button className="btn btn-primary" onClick={markHolidayForAll} disabled={isUpdating}>
                 {isUpdating ? 'Updating...' : 'Confirm Bulk Holiday'}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* View All History Modal */}
+      {showHistoryModal && selectedCell && (
+        <div className="modal-overlay" onClick={() => setShowHistoryModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()} style={{ maxWidth: 500 }}>
+            <div className="modal-header">
+              <h3>Full Change History</h3>
+              <button className="modal-close" onClick={() => setShowHistoryModal(false)}>×</button>
+            </div>
+            <div className="modal-body">
+              <div style={{ marginBottom: 15 }}>
+                <p style={{ margin: '0 0 5px 0', fontSize: 14 }}><strong>Employee:</strong> {selectedCell.workerName}</p>
+                <p style={{ margin: 0, fontSize: 14 }}><strong>Date:</strong> {selectedCell.displayDate}</p>
+              </div>
+              
+              <div style={{ maxHeight: 300, overflowY: 'auto', fontSize: 13, background: 'rgba(0,0,0,0.1)', padding: 10, borderRadius: 4 }}>
+                {selectedCell.history.slice().reverse().map((h, i) => (
+                  <div key={i} style={{ marginBottom: 10, paddingBottom: 10, borderBottom: i < selectedCell.history.length - 1 ? '1px solid var(--border)' : 'none' }}>
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
+                      <span style={{ fontWeight: 600 }}>{h.user?.name || 'Unknown'}</span>
+                      <span style={{ color: 'var(--text-muted)', fontSize: 11 }}>{new Date(h.date).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                    <div style={{ color: 'var(--text-secondary)' }}>{h.details}</div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="modal-footer">
+              <button className="btn btn-primary" onClick={() => setShowHistoryModal(false)}>Close</button>
             </div>
           </div>
         </div>

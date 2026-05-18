@@ -63,7 +63,7 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
   doc.roundedRect(10, legendY, pageWidth - 20, 8, 2, 2, 'F');
 
   doc.setFontSize(7);
-  const legendItems = Object.entries(STATUS_SHORT);
+  const legendItems = Object.entries(STATUS_SHORT).filter(([key]) => key !== 'OT');
   const legendLabels = {
     '1st_shift': '1st Shift', '2nd_shift': '2nd Shift', general: 'General',
     AA: 'Absent', 'C-off': 'C-Off', OT: 'Overtime', holiday: 'Holiday'
@@ -72,11 +72,11 @@ export function exportAttendancePDF({ workers, dates, reportPeriodTitle, departm
   legendItems.forEach(([key, short]) => {
     const color = STATUS_COLORS[key];
     // Colored dot
-    doc.setFillColor(...color.text);
+    doc.setFillColor(...color.bg);
     doc.circle(legendX, legendY + 4, 1.2, 'F');
     legendX += 3;
     // Label
-    doc.setTextColor(...color.text);
+    doc.setTextColor(226, 232, 240); // Light slate
     doc.text(`${short} — ${legendLabels[key]}`, legendX, legendY + 5);
     legendX += doc.getTextWidth(`${short} — ${legendLabels[key]}`) + 6;
   });

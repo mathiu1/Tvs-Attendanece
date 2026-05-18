@@ -1962,7 +1962,7 @@ thead .report-sticky-col5 {
     display: block;
     padding: 0;
   }
-  
+
   /* Fixed Save All button on mobile */
   .save-all-mobile-fixed {
     position: fixed !important;
@@ -1972,7 +1972,7 @@ thead .report-sticky-col5 {
     z-index: 1000 !important;
     border-radius: 8px !important;
     padding: 14px !important;
-    box-shadow: 0 4px 20px rgba(0,0,0,0.4) !important;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4) !important;
     background: var(--primary) !important;
     justify-content: center !important;
     border: 1px solid rgba(255, 255, 255, 0.15) !important;

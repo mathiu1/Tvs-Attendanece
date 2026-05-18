@@ -54,6 +54,22 @@ const attendanceSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    history: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+        },
+        date: {
+          type: Date,
+          default: Date.now,
+        },
+        details: {
+          type: String,
+          required: true,
+        },
+      },
+    ],
   },
   {
     timestamps: true,

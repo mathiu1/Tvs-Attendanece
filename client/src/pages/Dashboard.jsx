@@ -13,9 +13,11 @@ const Dashboard = () => {
   const [absentFilter, setAbsentFilter] = useState('without_inform');
   const [lookupResults, setLookupResults] = useState([]);
   const [isSearching, setIsSearching] = useState(false);
+  const [shiftPending, setShiftPending] = useState(false);
 
   useEffect(() => {
     fetchStats();
+    fetchShiftPending();
   }, []);
 
   useEffect(() => {
@@ -60,6 +62,16 @@ const Dashboard = () => {
       console.error(err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchShiftPending = async () => {
+    try {
+      const deptId = isSupervisor() ? user.department?._id : '';
+      const { data } = await API.get(`/shifts/pending`, { params: { department: deptId } });
+      setShiftPending(data.pending);
+    } catch (err) {
+      console.error(err);
     }
   };
 
@@ -111,14 +123,27 @@ const Dashboard = () => {
   const renderVisualsAndList = () => (
     <>
       {/* Pending Alerts */}
-      {stats.pendingAlerts && stats.pendingAlerts.length > 0 && (
+      {(shiftPending || (stats.pendingAlerts && stats.pendingAlerts.length > 0)) && (
         <div style={{ marginBottom: 20 }}>
-          {stats.pendingAlerts.map(alert => (
+          {shiftPending && (
+            <Link
+              to="/shifts"
+              className="alert-card alert-warning"
+              style={{ textDecoration: 'none', display: 'flex', transition: 'var(--transition)', marginBottom: 10 }}
+            >
+              <HiOutlineBell style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }} />
+              <div>
+                <strong style={{ display: 'block', marginBottom: 2 }}>Action Required</strong>
+                <span>Next week shift schedule is pending. Please complete that.</span>
+              </div>
+            </Link>
+          )}
+          {stats.pendingAlerts && stats.pendingAlerts.map(alert => (
             <Link
               key={alert.id}
               to={alert.id === 'a1' ? '/attendance/report' : '/attendance/mark'}
               className={`alert-card alert-${alert.type}`}
-              style={{ textDecoration: 'none', display: 'flex', transition: 'var(--transition)' }}
+              style={{ textDecoration: 'none', display: 'flex', transition: 'var(--transition)', marginBottom: 5 }}
             >
               <HiOutlineBell style={{ fontSize: 18, flexShrink: 0, marginTop: 2 }} />
               <div>

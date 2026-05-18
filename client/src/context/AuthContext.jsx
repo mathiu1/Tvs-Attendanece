@@ -1,5 +1,6 @@
 import { createContext, useContext, useState, useEffect } from 'react';
 import API from '../api/axios';
+import toast from 'react-hot-toast';
 
 const AuthContext = createContext();
 
@@ -14,6 +15,31 @@ export const AuthProvider = ({ children }) => {
     if (token) loadUser();
     else setLoading(false);
   }, []);
+
+  useEffect(() => {
+    if (!user) return;
+
+    let timeout;
+    const INACTIVITY_TIME = 15 * 60 * 1000; // 15 minutes
+
+    const resetTimer = () => {
+      clearTimeout(timeout);
+      timeout = setTimeout(() => {
+        logout();
+        toast.error('Session expired due to inactivity', { id: 'session-expired' });
+      }, INACTIVITY_TIME);
+    };
+
+    const events = ['mousemove', 'keydown', 'click', 'scroll'];
+    events.forEach(event => window.addEventListener(event, resetTimer));
+
+    resetTimer();
+
+    return () => {
+      clearTimeout(timeout);
+      events.forEach(event => window.removeEventListener(event, resetTimer));
+    };
+  }, [user]);
 
   const loadUser = async () => {
     try {
